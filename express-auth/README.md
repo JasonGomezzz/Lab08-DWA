@@ -108,11 +108,13 @@ express-auth/
 
 ### 4. Comprobar en producción
 
+La API publicada está en <https://express-auth-gomez.onrender.com>.
+
 ```bash
-curl https://express-auth-<apellido>.onrender.com/health
+curl https://express-auth-gomez.onrender.com/health
 ```
 
-El plan gratuito se duerme por inactividad: la primera petición después de un rato puede tardar cerca de un minuto.
+Debe responder `{"ok":true}`. El plan gratuito se duerme por inactividad: la primera petición después de un rato puede tardar cerca de un minuto.
 
 ## Procedimiento del documento
 
