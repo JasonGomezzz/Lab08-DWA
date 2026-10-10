@@ -1,13 +1,15 @@
-# Laboratorio 07 · Seguridad en aplicaciones con JWT
+# express-auth · API con JWT desplegada en la nube
 
-Solución del Laboratorio 07 de Desarrollo de Aplicaciones Web Avanzado (TECSUP). El proyecto `express-mongo-auth` implementa una API de autenticación con Express, MongoDB, bcrypt y JSON Web Tokens organizada por capas (modelo, repositorio, servicio, controlador, middleware, rutas y utilidades). Sobre esa API, la tarea agrega un frontend con EJS y Materialize: **Salvoconducto**, una interfaz que trata el JWT como un pase firmado.
+Tarea 2 del Laboratorio 08 de Desarrollo de Aplicaciones Web Avanzado (TECSUP): el proyecto del Laboratorio 07 desplegado en producción, con la base de datos en MongoDB Atlas, la API en Render y el despliegue automático con GitHub Actions.
 
-Repositorio: [JasonGomezzz/Lab07-DAWA](https://github.com/JasonGomezzz/Lab07-DAWA)
+El proyecto implementa una API de autenticación con Express, MongoDB, bcrypt y JSON Web Tokens organizada por capas (modelo, repositorio, servicio, controlador, middleware, rutas y utilidades). Sobre esa API hay un frontend con EJS y Materialize: **Salvoconducto**, una interfaz que trata el JWT como un pase firmado.
+
+Repositorio: [JasonGomezzz/Lab08-DWA](https://github.com/JasonGomezzz/Lab08-DWA) (carpeta `express-auth`). Origen del código: [JasonGomezzz/Lab07-DAWA](https://github.com/JasonGomezzz/Lab07-DAWA).
 
 ## Requisitos
 
 - Node.js 18 o superior (probado con Node 22.18).
-- MongoDB local en `mongodb://localhost:27017` (probado con MongoDB 8.0 instalado con Homebrew).
+- MongoDB: local en `mongodb://localhost:27017` para desarrollo (probado con MongoDB 8.0 instalado con Homebrew) o un cluster de MongoDB Atlas para producción.
 - npm.
 - Opcional: MongoDB Compass o `mongosh` para revisar la base de datos.
 
@@ -52,7 +54,7 @@ Todas están documentadas en [`.env.example`](.env.example). El archivo `.env` r
 ## Estructura del proyecto
 
 ```text
-Lab07-DAWA/
+express-auth/
 ├── src/
 │   ├── controllers/           # AuthController, UserController
 │   ├── middlewares/           # authenticate, authorize, errorHandler
@@ -71,6 +73,46 @@ Lab07-DAWA/
 ├── .env.example
 └── package.json
 ```
+
+## Despliegue en producción
+
+### 1. Base de datos en MongoDB Atlas
+
+1. Crea un cluster gratuito y un usuario de base de datos (*Database Access*).
+2. En *Network Access* permite las IP de Render. El plan gratuito no tiene IP fija, por eso en este laboratorio se agrega `0.0.0.0/0`; no lo dejes abierto después de la entrega.
+3. Copia la cadena de *Connect → Compass* y úsala como `MONGODB_URI`, con la base `auth_db` en la ruta.
+
+### 2. API en Render
+
+1. *New → Web Service* con el repositorio `Lab08-DWA`, *Root Directory* `express-auth` y plan Free.
+2. El nombre del servicio define la URL pública: `express-auth-<apellido>` → `https://express-auth-<apellido>.onrender.com`.
+3. *Build Command* `npm install`, *Start Command* `npm start`, *Health Check Path* `/health`.
+4. Variables de entorno (en Render los valores van sin comillas):
+
+| Variable | Valor |
+|---|---|
+| `MONGODB_URI` | Cadena de Atlas con `/auth_db`. |
+| `JWT_SECRET` | Clave aleatoria propia: `openssl rand -hex 32`. |
+| `JWT_EXPIRES_IN` | `1h` |
+| `BCRYPT_SALT_ROUNDS` | `10` |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Administrador inicial; la contraseña debe cumplir la política. |
+| `ADMIN_NAME`, `ADMIN_LASTNAME`, `ADMIN_PHONE`, `ADMIN_BIRTHDATE` | Resto de campos del administrador. |
+
+`PORT` no se define: Render lo inyecta y `server.js` ya lo lee.
+
+### 3. Despliegue automático con GitHub Actions
+
+1. En Render, *Settings → Deploy Hook*: copia la URL.
+2. En GitHub, *Settings → Secrets and variables → Actions → New repository secret*: `RENDER_DEPLOY_HOOK_URL`.
+3. El workflow `.github/workflows/deploy.yml` corre `npm test` y, si pasa, hace `POST` al Deploy Hook en cada push a `main` que modifique `express-auth/`.
+
+### 4. Comprobar en producción
+
+```bash
+curl https://express-auth-<apellido>.onrender.com/health
+```
+
+El plan gratuito se duerme por inactividad: la primera petición después de un rato puede tardar cerca de un minuto.
 
 ## Procedimiento del documento
 
@@ -140,6 +182,7 @@ Salvoconducto pertenece a la misma familia editorial que la Bitácora del Lab 06
 
 ## Desviaciones respecto al enunciado
 
+- **Laboratorio 08:** el código del Laboratorio 07 se despliega sin cambios funcionales. La conexión usa `MONGODB_URI` (el enunciado del Laboratorio 08 la llama `MONGO_URI` en su ejemplo), y el workflow vive en la raíz del repositorio porque GitHub solo lee `.github/workflows/` ahí; se filtra por la carpeta `express-auth/` y usa el secret `RENDER_DEPLOY_HOOK_URL`, como en el enunciado.
 - **Nombres de campos:** el documento escribe `phoneNumer` y `adress`; se usan `phoneNumber` y `address`, que es como los nombra la sección de SignUp.
 - **Script `dev`:** `nodemon --watch src src/server.js`. El flag `--experimental-specifier-resolution=node` ya no existe en Node 19+.
 - **dotenv:** `import 'dotenv/config'` como primer import. En ESM los `import` se evalúan antes que el cuerpo del archivo, así que `dotenv.config()` llamado después llega tarde para cualquier módulo que lea `process.env` al cargarse.
